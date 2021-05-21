@@ -218,6 +218,23 @@ def apply_foot_bone_workaround(armature, bonenames=['RightToeBase', 'LeftToeBase
     for name in bonenames:
         armature.data.edit_bones[name].roll = pi
 
+def create_ik_bone(armature, parent_bone_name='ik_foot_root', bone_name='ik_foot_l', source_bone_name='LeftFoot'):
+    """create a bone constrained to follow another"""
+    bpy.ops.object.mode_set(mode='EDIT')
+    src_bone = armature.data.edit_bones.get(source_bone_name)
+    if not src_bone:
+        return
+    ik_bone = armature.data.edit_bones.new(bone_name)
+    ik_bone.head, ik_bone.tail = src_bone.head.copy(), src_bone.tail.copy()
+    ik_bone.roll = src_bone.roll
+    ik_bone.parent = armature.data.edit_bones.get(parent_bone_name)
+    bone_name = ik_bone.name
+    bpy.ops.object.mode_set(mode='POSE')
+    ik_bone = armature.pose.bones[bone_name]
+    c_ik_bone_copy = ik_bone.constraints.new(type='COPY_TRANSFORMS')
+    c_ik_bone_copy.target = armature
+    c_ik_bone_copy.subtarget = source_bone_name
+
 class Status:
     def __init__(self, msg, status_type='default'):
         self.msg = msg
@@ -226,7 +243,7 @@ class Status:
         return str(self.msg)
 
 def hip_to_root(armature, use_x=True, use_y=True, use_z=True, on_ground=True, use_rotation=True, scale=1.0, restoffset=(0, 0, 0),
-                hipname='', fixbind=True, apply_rotation=True, apply_scale=False, quaternion_clean_pre=True, quaternion_clean_post=True, foot_bone_workaround=False):
+                hipname='', fixbind=True, apply_rotation=True, apply_scale=False, quaternion_clean_pre=True, quaternion_clean_post=True, foot_bone_workaround=False, add_ik_bones=False):
     """function to bake hipmotion to RootMotion in MixamoRigs"""
 
     yield Status("starting hip_to_root")
@@ -397,6 +414,28 @@ def hip_to_root(armature, use_x=True, use_y=True, use_z=True, on_ground=True, us
 
     yield Status("bakers deleted")
 
+    # Add IK bones
+    if add_ik_bones:
+        yield Status("adding ik root bones")
+        bpy.ops.object.mode_set(mode='EDIT')
+        ik_foot_root = root.data.edit_bones.new(name="ik_foot_root")
+        ik_foot_root.head, ik_foot_root.tail = Vector((0, 0, 0)), Vector((0, 1, 0))
+        ik_foot_root.roll = 0.0
+        ik_hand_root = root.data.edit_bones.new(name="ik_hand_root")
+        ik_hand_root.head, ik_hand_root.tail = Vector((0, 0, 0)), Vector((0, 1, 0))
+        ik_hand_root.roll = 0.0
+
+        yield Status("adding ik foot bones")
+        b_ue = bpy.context.scene.mixamo.b_unreal_bones
+        create_ik_bone(root, "ik_foot_root", "ik_foot_l", "foot_l" if b_ue else "LeftFoot")
+        create_ik_bone(root, "ik_foot_root", "ik_foot_r", "foot_r" if b_ue else "RightFoot")
+
+        yield Status("adding ik hand bones")
+        ik_hand_gun = create_ik_bone(root, "ik_hand_root", "ik_hand_gun", "hand_r" if b_ue else "RightHand")
+        create_ik_bone(root, "ik_hand_gun", "ik_hand_l", "hand_l" if b_ue else "LeftHand")
+        create_ik_bone(root, "ik_hand_gun", "ik_hand_r", "hand_r" if b_ue else "RightHand")
+        bpy.ops.object.mode_set(mode='OBJECT')
+
     # bind armature to dummy mesh if it doesn't have any
     if fixbind:
         bindmesh = None
@@ -425,7 +464,7 @@ def hip_to_root(armature, use_x=True, use_y=True, use_z=True, on_ground=True, us
 
 def batch_hip_to_root(source_dir, dest_dir, use_x=True, use_y=True, use_z=True, on_ground=True, use_rotation=True, scale=1.0,
                       restoffset=(0, 0, 0), hipname='', fixbind=True, apply_rotation=True, apply_scale=False,
-                      b_remove_namespace=True, b_unreal_bones=False, add_leaf_bones=False, knee_offset=(0, 0, 0), ignore_leaf_bones=True, automatic_bone_orientation=True, quaternion_clean_pre=True, quaternion_clean_post=True, foot_bone_workaround=False):
+                      b_remove_namespace=True, b_unreal_bones=False, add_leaf_bones=False, knee_offset=(0, 0, 0), ignore_leaf_bones=True, automatic_bone_orientation=True, quaternion_clean_pre=True, quaternion_clean_post=True, foot_bone_workaround=False, add_ik_bones=False):
     """Batch Convert MixamoRigs"""
     
     source_dir = Path(source_dir)
@@ -510,7 +549,7 @@ def batch_hip_to_root(source_dir, dest_dir, use_x=True, use_y=True, use_z=True, 
         try:
             for step in hip_to_root(armature, use_x=use_x, use_y=use_y, use_z=use_z, on_ground=on_ground, use_rotation=use_rotation, scale=scale,
                         restoffset=restoffset, hipname=hipname, fixbind=fixbind, apply_rotation=apply_rotation,
-                        apply_scale=apply_scale, quaternion_clean_pre=quaternion_clean_pre, quaternion_clean_post=quaternion_clean_post, foot_bone_workaround=foot_bone_workaround):
+                        apply_scale=apply_scale, quaternion_clean_pre=quaternion_clean_pre, quaternion_clean_post=quaternion_clean_post, foot_bone_workaround=foot_bone_workaround, add_ik_bones=add_ik_bones):
                 #DEBUG log.error(str(step))
                 pass
         except Exception as e:

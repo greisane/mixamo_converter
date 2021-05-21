@@ -169,6 +169,10 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         name="Foot Bone Workaround",
         description="Attempts to fix twisting of the foot bones",
         default=False)
+    add_ik_bones: bpy.props.BoolProperty(
+        name="Add IK Bones",
+        description="Add UE4 IK bones attached to feet and hands",
+        default=False)
 
 
 class OBJECT_OT_RemoveNamespace(bpy.types.Operator):
@@ -237,7 +241,8 @@ class OBJECT_OT_ConvertSingle(bpy.types.Operator):
             apply_scale = mixamo.apply_scale,
             quaternion_clean_pre=mixamo.quaternion_clean_pre,
             quaternion_clean_post=mixamo.quaternion_clean_post,
-            foot_bone_workaround=mixamo.foot_bone_workaround)
+            foot_bone_workaround=mixamo.foot_bone_workaround,
+            add_ik_bones=mixamo.add_ik_bones)
 
         try:
             for status in mixamoconv_iterator:
@@ -285,7 +290,9 @@ class OBJECT_OT_ConvertSingleStepwise(bpy.types.Operator):
                 apply_scale = mixamo.apply_scale,
                 quaternion_clean_pre=mixamo.quaternion_clean_pre,
                 quaternion_clean_post=mixamo.quaternion_clean_post,
-                foot_bone_workaround=mixamo.foot_bone_workaround)
+                foot_bone_workaround=mixamo.foot_bone_workaround,
+                add_ik_bones=mixamo.add_ik_bones)
+
             self.report({'INFO'}, "New conversion started")
         try:
             try:
@@ -371,7 +378,8 @@ class OBJECT_OT_ConvertBatch(bpy.types.Operator):
             automatic_bone_orientation = mixamo.automatic_bone_orientation,
             quaternion_clean_pre=mixamo.quaternion_clean_pre,
             quaternion_clean_post=mixamo.quaternion_clean_post,
-            foot_bone_workaround=mixamo.foot_bone_workaround)
+            foot_bone_workaround=mixamo.foot_bone_workaround,
+            add_ik_bones=mixamo.add_ik_bones)
         if numfiles == -1:
             self.report({'ERROR_INVALID_INPUT'}, 'Error: Not all files could be converted, look in console for more information')
             return{ 'CANCELLED'}
@@ -462,6 +470,7 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoconv(bpy.types.Panel):
 
                 row = box.row()
                 row.prop(scene.mixamo, "foot_bone_workaround")
+                row.prop(scene.mixamo, "add_ik_bones")
 
         # input and output paths for batch conversion
         box = layout.box()
