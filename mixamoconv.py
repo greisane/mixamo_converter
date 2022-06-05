@@ -252,6 +252,7 @@ def hip_to_root(armature, use_x=True, use_y=True, use_z=True, on_ground=True, us
     root.name = "root"
     root.rotation_mode = 'QUATERNION'
     framerange = root.animation_data.action.frame_range
+    framerange = int(framerange[0]), int(framerange[1])
 
     for hipname in ('Hips', 'mixamorig:Hips', 'mixamorig_Hips', 'Pelvis', hipname):
         hips = root.pose.bones.get(hipname)
